@@ -91,6 +91,7 @@ class RestraintController implements vscode.Disposable {
 
 	public dispose(): void {
 		this.isDisposed = true;
+		this.markCurrentProjectDeparture();
 		this.stopTicker();
 		this.statusBar.hide();
 		this.configPanel?.dispose();
@@ -98,7 +99,15 @@ class RestraintController implements vscode.Disposable {
 	}
 
 	private refreshActiveProject(): void {
-		this.currentProjectName = this.getCurrentWorkspaceFolderName();
+		const previousProjectName = this.currentProjectName;
+		const nextProjectName = this.getCurrentWorkspaceFolderName();
+		const now = Date.now();
+
+		if (previousProjectName && previousProjectName !== nextProjectName) {
+			this.markProjectDeparture(previousProjectName, now);
+		}
+
+		this.currentProjectName = nextProjectName;
 		const config = this.getCurrentProjectConfig();
 
 		if (!config) {
@@ -109,11 +118,13 @@ class RestraintController implements vscode.Disposable {
 		}
 
 		this.ensureProjectState(config);
-		this.alignWorkTimerResumePoint(config);
+		if (previousProjectName !== config.name) {
+			this.applyIdleRecharge(config, now);
+		}
 		this.startTicker(config);
 	}
 
-	private alignWorkTimerResumePoint(config: ProjectConfig): void {
+	private applyIdleRecharge(config: ProjectConfig, now: number): void {
 		const state = this.getState(config.name);
 		if (!state) {
 			return;
@@ -123,8 +134,30 @@ class RestraintController implements vscode.Disposable {
 			return;
 		}
 
-		state.lastUpdatedAt = Date.now();
+		const maxWorkMs = this.minutesToMs(config.workMinutes);
+		const elapsedMs = Math.max(0, now - state.lastUpdatedAt);
+		const rechargeMs = Math.floor(elapsedMs / 2);
+		state.remainingMs = Math.min(maxWorkMs, state.remainingMs + rechargeMs);
+		state.lastUpdatedAt = now;
 		this.persistState(config.name, state);
+	}
+
+	private markCurrentProjectDeparture(): void {
+		this.markProjectDeparture(this.currentProjectName, Date.now());
+	}
+
+	private markProjectDeparture(projectName: string | undefined, now: number): void {
+		if (!projectName) {
+			return;
+		}
+
+		const state = this.getState(projectName);
+		if (!state || state.unblockAt !== null) {
+			return;
+		}
+
+		state.lastUpdatedAt = now;
+		this.persistState(projectName, state);
 	}
 
 	private startTicker(config: ProjectConfig): void {
