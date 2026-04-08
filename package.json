@@ -1,8 +1,9 @@
 {
   "name": "restrainttm",
   "displayName": "restraintTM",
-  "description": "Introduce cooldowns while programming your passion project, so you don't neglect other duties",
+  "description": "Introduce cooldowns while programming your passion projects, so you don't neglect other duties",
   "icon": "media/icon.png",
+  "publisher": "FerdinandoPH",
   "repository": {
     "type": "git",
     "url": "https://github.com/FerdinandoPH/restraintTM"

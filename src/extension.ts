@@ -109,7 +109,22 @@ class RestraintController implements vscode.Disposable {
 		}
 
 		this.ensureProjectState(config);
+		this.alignWorkTimerResumePoint(config);
 		this.startTicker(config);
+	}
+
+	private alignWorkTimerResumePoint(config: ProjectConfig): void {
+		const state = this.getState(config.name);
+		if (!state) {
+			return;
+		}
+
+		if (state.unblockAt !== null) {
+			return;
+		}
+
+		state.lastUpdatedAt = Date.now();
+		this.persistState(config.name, state);
 	}
 
 	private startTicker(config: ProjectConfig): void {
